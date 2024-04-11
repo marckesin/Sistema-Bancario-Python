@@ -8,6 +8,7 @@ from art import logo
 from funcoes import to_hash, login, clear, checa_saldo
 
 
+# Carrega as variaveis de ambiente
 load_dotenv()
 URI = os.getenv("URI")
 
@@ -15,15 +16,16 @@ URI = os.getenv("URI")
 def main():
     try:
         clear()
+
+        # Conecta ao MongoDB Atlas
         client = MongoClient(URI)
         client.admin.command("ping")
         print("Conectado ao MongoDB!")
-        # client = MongoClient("localhost", 27017)
+        # client = MongoClient("localhost", 27017) # Banco de dados local para testes
         db = client.maindatabase
         collection = db.customers
     except Exception as e:
         print(e)
-
 
     while True:
         print(logo)
@@ -39,19 +41,26 @@ def main():
 
         opcao = pyip.inputInt("Qual opção desejada? ")
 
+        # Cadastro de novos clientes
         if opcao == 1:
             while True:
                 while True:
                     nome = input("Qual seu nome? \n")
-                    verifica_nome = re.match(r'^[a-zA-Z]+[a-zA-Z\s]*[a-zA-Z]+$', nome)
+
+                    # Verifica se o nome não possui caracteres inválidos
+                    verifica_nome = re.match(
+                        r'^[a-zA-Z]+[a-zA-Z\s]*[a-zA-Z]+$', nome)
                     if verifica_nome:
                         break
-                    print("Nome inválido. Seu nome não deve conter números ou espaços em branco.")
+                    print(
+                        "Nome inválido. Seu nome não deve conter números ou espaços em branco."
+                    )   
                 if collection.find_one({"nome": nome}):
                     print("Nome de usuário já existe!\n")
                 else:
                     break
 
+            # Verifica se as senhas digitadas conferem
             while True:
                 senha = pyip.inputPassword("Digite uma senha: \n")
                 confirma_senha = pyip.inputPassword(
@@ -79,9 +88,11 @@ def main():
                     break
                 else:
                     print("Senha digitada não confere!")
+        # Depositar
         elif opcao == 2:
             id_cliente = login(collection)
 
+            # Realiza o deposito se o cliente for encontrado no banco de dados
             if id_cliente:
                 print("Login realizado com sucesso! \n")
                 valor_deposito = pyip.inputNum(
@@ -97,9 +108,11 @@ def main():
             else:
                 clear()
                 print("Nome e/ou senha incorretos! \n")
+        # Saque
         elif opcao == 3:
             id_cliente = login(collection)
 
+            # Realiza o saque se o cliente for encontrado no banco de dados
             if id_cliente:
                 while True:
                     valor_saque = abs(
@@ -108,7 +121,8 @@ def main():
                         ))
                     if valor_saque > 500:
                         print(
-                            "O valor limite por operação é de no máximo R$ 500.00")
+                            "O valor limite por operação é de no máximo R$ 500.00"
+                        )
                     elif valor_saque == 0:
                         clear()
                         print("Nenhum valor foi sacado da sua conta.")
@@ -127,12 +141,14 @@ def main():
             else:
                 clear()
                 print("Nome e/ou senha incorretos! \n")
+        # Verifica extrato da conta
         elif opcao == 4:
             id_cliente = login(collection)
 
             if id_cliente:
                 print("Login realizado com sucesso! \n")
 
+                # Busca apenas as movimentações financeiras co cliente
                 resultado = collection.find_one({"_id": id_cliente}, {
                     "_id": 0,
                     "movimentacao": 1
@@ -144,19 +160,23 @@ def main():
                     print(f"Depósitos realizados: R$ {tipo:.2f}")
                 for tipo in resultado["movimentacao"]["saque"]:
                     print(f"Saques realizados: R$ {tipo:.2f}")
-                print(f"Saldo Total = R$ {checa_saldo(id_cliente, collection):.2f}")
+                print(
+                    f"Saldo Total = R$ {checa_saldo(id_cliente, collection):.2f}"
+                )
                 print("=" * 55)
                 print("\n\n")
             else:
                 clear()
                 print("Nome e/ou senha incorretos!")
+        # Sai do programa
         elif opcao == 5:
             clear()
             print("Volte sempre! \n")
             break
         else:
             clear()
-            print("Opção inválida, selecione novamente a operação desejada. \n")
+            print(
+                "Opção inválida, selecione novamente a operação desejada. \n")
 
 
 if __name__ == '__main__':
