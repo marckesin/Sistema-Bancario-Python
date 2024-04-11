@@ -5,6 +5,8 @@ Aplicação desenvolvida para simular operações bancárias como criar novas
 contas, realizar depósitos, realizar saques e verificar o extrato da conta.
 Utiliza MongoDB Atlas como banco de dados para armazenamento das informações.
 
+![](pyBank.png)
+
 ## Características
 - Autenticação e autorização de usuário.
 - Criação de contas únicas por nome de usuário.
