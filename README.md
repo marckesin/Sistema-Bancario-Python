@@ -33,6 +33,13 @@ cd Sistema-Bancario-python
 ```
 pip install -r requirements.txt
 ```
+- Para poder rodar localmente é necessário a instalação do [MongoDB Compass](https://www.mongodb.com/try/download/shell)
+
+- Esse trecho do código informa que a conexão é local
+
+```
+client = MongoClient("localhost", 27017)
+```
 
 - Rode a aplicação
 
