@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from art import logo
-from funcoes import to_hash, login, clear, checa_saldo
-
+from funcoes import to_hash, login, clear, checa_saldo, realiza_deposito, realiza_saque, extrato
 
 # Carrega as variaveis de ambiente
 load_dotenv()
@@ -29,7 +28,8 @@ def main():
 
     while True:
         print(logo)
-        print("""Bem vindo ao pyBank! Escolha uma das opções a seguir:
+        print(
+            """Bem vindo ao pyBank! Escolha uma das opções a seguir:
 #######################################################		
 1- Criar Conta;            
 2- Depositar;
@@ -48,13 +48,12 @@ def main():
                     nome = input("Qual seu nome? \n")
 
                     # Verifica se o nome não possui caracteres inválidos
-                    verifica_nome = re.match(
-                        r'^[a-zA-Z]+[a-zA-Z\s]*[a-zA-Z]+$', nome)
+                    verifica_nome = re.match(r"^[a-zA-Z]+[a-zA-Z\s]*[a-zA-Z]+$", nome)
                     if verifica_nome:
                         break
                     print(
                         "Nome inválido. Seu nome não deve conter números ou espaços em branco."
-                    )   
+                    )
                 if collection.find_one({"nome": nome}):
                     print("Nome de usuário já existe!\n")
                 else:
@@ -63,27 +62,25 @@ def main():
             # Verifica se as senhas digitadas conferem
             while True:
                 senha = pyip.inputPassword("Digite uma senha: \n")
-                confirma_senha = pyip.inputPassword(
-                    "Digite sua senha novamente: \n")
+                confirma_senha = pyip.inputPassword("Digite sua senha novamente: \n")
                 if senha == confirma_senha:
                     senha_hash = to_hash(senha)
                     novo_cliente = {
                         "nome": nome,
-                        "movimentacao": {
-                            "deposito": [],
-                            "saque": []
-                        },
+                        "movimentacao": {"deposito": [], "saque": []},
                         "hash": senha_hash,
                         "data": datetime.now(tz=timezone.utc),
                     }
 
                     collection.insert_one(novo_cliente)
                     clear()
-                    print(f"""
+                    print(
+                        f"""
 #########################################################
   Conta criada com sucesso! Bem-vindo ao pyBank {nome}! 
 #########################################################
-                        """)
+                        """
+                    )
                     print("\n\n")
                     break
                 else:
@@ -91,83 +88,17 @@ def main():
         # Depositar
         elif opcao == 2:
             id_cliente = login(collection)
-
             # Realiza o deposito se o cliente for encontrado no banco de dados
-            if id_cliente:
-                print("Login realizado com sucesso! \n")
-                valor_deposito = pyip.inputNum(
-                    "Qual valor você gostaria de depositar? \n")
-
-                collection.update_one(
-                    {"_id": id_cliente},
-                    {"$push": {
-                        "movimentacao.deposito": valor_deposito
-                    }})
-                clear()
-                print(f"Valor depositado: R$ {valor_deposito}")
-            else:
-                clear()
-                print("Nome e/ou senha incorretos! \n")
+            realiza_deposito(id_cliente, collection)
         # Saque
         elif opcao == 3:
             id_cliente = login(collection)
-
             # Realiza o saque se o cliente for encontrado no banco de dados
-            if id_cliente:
-                while True:
-                    valor_saque = abs(
-                        pyip.inputNum(
-                            "Qual valor você gostaria sacar? (Limite de R$ 500.00 por saque) \n"
-                        ))
-                    if valor_saque > 500:
-                        print(
-                            "O valor limite por operação é de no máximo R$ 500.00"
-                        )
-                    elif valor_saque == 0:
-                        clear()
-                        print("Nenhum valor foi sacado da sua conta.")
-                        break
-                    elif valor_saque > checa_saldo(id_cliente, collection):
-                        print("Saldo insuficiente.")
-                    else:
-                        collection.update_one(
-                            {"_id": id_cliente},
-                            {"$push": {
-                                "movimentacao.saque": valor_saque
-                            }})
-                        clear()
-                        print(f"Valor sacado: R$ {valor_saque:.2f} \n")
-                        break
-            else:
-                clear()
-                print("Nome e/ou senha incorretos! \n")
+            realiza_saque(id_cliente, collection)
         # Verifica extrato da conta
         elif opcao == 4:
             id_cliente = login(collection)
-
-            if id_cliente:
-                print("Login realizado com sucesso! \n")
-
-                # Busca apenas as movimentações financeiras co cliente
-                resultado = collection.find_one({"_id": id_cliente}, {
-                    "_id": 0,
-                    "movimentacao": 1
-                })
-
-                clear()
-                print("=" * 55)
-                for tipo in resultado["movimentacao"]["deposito"]:
-                    print(f"Depósitos realizados: R$ {tipo:.2f}")
-                for tipo in resultado["movimentacao"]["saque"]:
-                    print(f"Saques realizados: R$ {tipo:.2f}")
-                print(
-                    f"Saldo Total = R$ {checa_saldo(id_cliente, collection):.2f}"
-                )
-                print("=" * 55)
-                print("\n\n")
-            else:
-                clear()
-                print("Nome e/ou senha incorretos!")
+            extrato(id_cliente, collection)
         # Sai do programa
         elif opcao == 5:
             clear()
@@ -175,9 +106,8 @@ def main():
             break
         else:
             clear()
-            print(
-                "Opção inválida, selecione novamente a operação desejada. \n")
+            print("Opção inválida, selecione novamente a operação desejada. \n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
