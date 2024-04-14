@@ -1,6 +1,9 @@
 import hashlib
 import os
 import pyinputplus as pyip
+from datetime import datetime, timezone
+from tabulate import tabulate
+
 
 # Função limpa tela
 def clear():
@@ -30,9 +33,9 @@ def checa_saldo(id_cliente, collection):
         "_id": 0,
         "movimentacao": 1
     })
-    total_depositos = sum(resultado["movimentacao"]["deposito"])
-    total_saques = sum(resultado["movimentacao"]["saque"])
-    return total_depositos - total_saques
+    total_depositos = list(x[0] for x in resultado["movimentacao"]["deposito"])
+    total_saques = list(x[0] for x in resultado["movimentacao"]["saque"])
+    return sum(total_depositos) - sum(total_saques)
 
 
 # Realiza depósito
@@ -45,7 +48,7 @@ def realiza_deposito(id_cliente, collection):
 		collection.update_one(
 		    {"_id": id_cliente},
 		    {"$push": {
-		        "movimentacao.deposito": valor_deposito
+		        "movimentacao.deposito": (valor_deposito, datetime.now())
 		    }})
 		clear()
 		print(f"Valor depositado: R$ {valor_deposito}")
@@ -74,7 +77,7 @@ def realiza_saque(id_cliente, collection):
 		    else:
 		        collection.update_one(
 		            {"_id": id_cliente},
-		            {"$push": {"movimentacao.saque": valor_saque}},
+		            {"$push": {"movimentacao.saque": (valor_saque, datetime.now())}},
 		        )
 		        clear()
 		        print(f"Valor sacado: R$ {valor_saque:.2f} \n")
@@ -89,20 +92,24 @@ def extrato(id_cliente, collection):
     if id_cliente:
         print("Login realizado com sucesso! \n")
 
-        # Busca apenas as movimentações financeiras co cliente
+        # Busca apenas as movimentações financeiras do cliente
         resultado = collection.find_one(
-            {"_id": id_cliente}, {"_id": 0, "movimentacao": 1}
+            {"_id": id_cliente}, {"_id": 0, "movimentacao": 1, "nome": 1}
         )
 
+        extrato = []
+
+        for valor, data in resultado["movimentacao"]["deposito"]:
+            extrato.append(("deposito", f"R$ {valor:.2f}", f"{data:%d/%m/%Y %X}"))
+        for valor, data in resultado["movimentacao"]["saque"]:
+            extrato.append(("saque", f"R$ {valor:.2f}", f"{data:%d/%m/%Y %X}"))
+
         clear()
-        print("=" * 55)
-        for tipo in resultado["movimentacao"]["deposito"]:
-            print(f"Depósitos realizados: R$ {tipo:.2f}")
-        for tipo in resultado["movimentacao"]["saque"]:
-            print(f"Saques realizados: R$ {tipo:.2f}")
+        extrato.sort(key=lambda x: x[2])
+        print("EXTRATO BANCARIO")
+        print(f"Cliente: {resultado["nome"]}")
+        print(tabulate(extrato, headers=["Movimentação","Valor", "Data"], tablefmt="pretty"))
         print(f"Saldo Total = R$ {checa_saldo(id_cliente, collection):.2f}")
-        print("=" * 55)
-        print("\n\n")
     else:
         clear()
         print("Nome e/ou senha incorretos! \n")
